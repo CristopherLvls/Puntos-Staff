@@ -80,3 +80,4 @@ prompts/            # Prompt del evaluador
 scripts/            # Inspección de BD SirgioBOT
 render.yaml         # Deploy Render
 ```
+# Puntos-Staff
