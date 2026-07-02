@@ -121,7 +121,7 @@ class StaffCommands(commands.Cog):
 
         except Exception as e:
             await interaction.followup.send(
-                f"Error al evaluar: {e}", ephemeral=True
+                gemini_evaluator.format_api_error(e), ephemeral=True
             )
 
     @app_commands.command(
@@ -266,7 +266,9 @@ class StaffCommands(commands.Cog):
             await interaction.followup.send(embed=embed)
 
         except Exception as e:
-            await interaction.followup.send(f"Error: {e}", ephemeral=True)
+            await interaction.followup.send(
+                gemini_evaluator.format_api_error(e), ephemeral=True
+            )
 
 
 def _color_for_points(points: float) -> discord.Color:

@@ -1,8 +1,46 @@
 import json
 import re
+import time
+
 import google.generativeai as genai
+from google.api_core import exceptions as google_exceptions
 
 import config
+
+def _is_quota_error(exc: Exception) -> bool:
+    if isinstance(exc, google_exceptions.ResourceExhausted):
+        return True
+    msg = str(exc).lower()
+    return "429" in msg or "quota" in msg or "resourceexhausted" in msg
+
+
+def format_api_error(exc: Exception) -> str:
+    if _is_quota_error(exc):
+        return (
+            "Cuota de Gemini agotada o el modelo no está disponible en tu plan.\n\n"
+            "**Qué hacer:**\n"
+            "1. En Render, cambia `GEMINI_MODEL` a `gemini-2.5-flash` o `gemini-2.5-flash-lite`\n"
+            "2. Crea una API key nueva en https://aistudio.google.com/apikey\n"
+            "3. Si el error dice `limit: 0`, vincula facturación en Google Cloud "
+            "(el free tier sigue teniendo requests gratis, pero Google lo exige)\n"
+            "4. Espera ~1 minuto si superaste el límite por minuto e intenta de nuevo"
+        )
+    return f"Error: {exc}"
+
+
+def _generate_with_retry(model: genai.GenerativeModel, prompt: str, **kwargs):
+    last_error = None
+    for attempt in range(3):
+        try:
+            return model.generate_content(prompt, **kwargs)
+        except Exception as exc:
+            last_error = exc
+            if not _is_quota_error(exc) or attempt == 2:
+                raise
+            wait = 40 * (attempt + 1)
+            time.sleep(wait)
+    raise last_error
+
 
 REPUTATION_BY_POINTS = [
     (8, 10, "Excelente"),
@@ -58,7 +96,8 @@ Cantidad de logs analizados: {log_count}
 
 Responde solo con el JSON indicado en las instrucciones del sistema."""
 
-    response = model.generate_content(
+    response = _generate_with_retry(
+        model,
         user_prompt,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json",
@@ -122,7 +161,8 @@ Historial:
 
 Responde JSON: {{"advice": ["...", "..."]}}"""
 
-    response = model.generate_content(
+    response = _generate_with_retry(
+        model,
         prompt,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json",

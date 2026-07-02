@@ -11,7 +11,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 MONGODB_READONLY_URI = os.getenv("MONGODB_READONLY_URI", "")
 MONGODB_READONLY_DB = os.getenv("MONGODB_READONLY_DB", "sirgiobot")
@@ -47,8 +47,8 @@ if _extra_staff_ids:
 STAFF_ROLE_NAMES = {name.lower() for name in STAFF_ROLE_MAP.values()} | {"mod"}
 
 PROMPT_PATH = BASE_DIR / "prompts" / "staff_evaluator.md"
-MAX_LOGS_FOR_AI = int(os.getenv("MAX_LOGS_FOR_AI", "150"))
-MAX_LOG_TEXT_CHARS = int(os.getenv("MAX_LOG_TEXT_CHARS", "28000"))
+MAX_LOGS_FOR_AI = int(os.getenv("MAX_LOGS_FOR_AI", "80"))
+MAX_LOG_TEXT_CHARS = int(os.getenv("MAX_LOG_TEXT_CHARS", "16000"))
 
 
 def get_staff_role_name(member) -> str:
