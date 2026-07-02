@@ -1,0 +1,33 @@
+services:
+  - type: worker
+    name: insight-ia-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: MONGODB_READONLY_URI
+        sync: false
+      - key: MONGODB_READONLY_DB
+        value: sirgiobot
+      - key: MONGODB_WRITE_URI
+        sync: false
+      - key: MONGODB_WRITE_DB
+        value: insight_ia
+      - key: MONGODB_LOGS_COLLECTION
+        value: logs
+      - key: ADMIN_ROLE_IDS
+        sync: false
+      - key: ROLE_HELPER_ID
+        value: "1510511672563994674"
+      - key: ROLE_MODERATOR_ID
+        value: "1510511628129665095"
+      - key: ROLE_TESTER_ID
+        value: "1510511651064119407"
