@@ -6,9 +6,9 @@ Bot de Discord en Python que lee logs de **SirgioBOT** (solo lectura), evalúa e
 
 | Rol | ID de Discord |
 |-----|----------------|
-| Helper | `1510511672563994674` |
-| Moderador | `1510511628129665095` |
-| Tester | `1510511651064119407` |
+| Helper | `1522373412880646288` |
+| Moderador | `1510511672563994674` |
+| Tester | `1522373488990752869` |
 
 ## Comandos
 

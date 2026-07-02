@@ -26,8 +26,8 @@ services:
       - key: ADMIN_ROLE_IDS
         sync: false
       - key: ROLE_HELPER_ID
-        value: "1510511672563994674"
+        value: "1522373412880646288"
       - key: ROLE_MODERATOR_ID
-        value: "1510511628129665095"
+        value: "1510511672563994674"
       - key: ROLE_TESTER_ID
-        value: "1510511651064119407"
+        value: "1522373488990752869"
