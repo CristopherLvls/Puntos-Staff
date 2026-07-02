@@ -1,7 +1,10 @@
+import asyncio
 import logging
+import os
 import sys
 
 import discord
+from aiohttp import web
 from discord.ext import commands
 
 import config
@@ -35,14 +38,36 @@ class InsightBot(commands.Bot):
         logger.info("Conectado como %s (%s)", self.user, self.user.id)
 
 
-def main():
+async def _health(_request: web.Request) -> web.Response:
+    return web.Response(text="ok")
+
+
+async def _start_health_server() -> None:
+    app = web.Application()
+    app.router.add_get("/", _health)
+    app.router.add_get("/health", _health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", "10000"))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info("Health check en http://0.0.0.0:%s/health", port)
+
+
+async def _run() -> None:
     missing = config.validate_config()
     if missing:
         logger.error("Variables de entorno faltantes: %s", ", ".join(missing))
         sys.exit(1)
 
+    await _start_health_server()
     bot = InsightBot()
-    bot.run(config.DISCORD_TOKEN)
+    async with bot:
+        await bot.start(config.DISCORD_TOKEN)
+
+
+def main():
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":

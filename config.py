@@ -37,6 +37,14 @@ STAFF_ROLE_MAP: dict[int, str] = {
 }
 
 STAFF_ROLE_IDS = set(STAFF_ROLE_MAP.keys())
+_extra_staff_ids = os.getenv("STAFF_ROLE_IDS", "")
+if _extra_staff_ids:
+    STAFF_ROLE_IDS.update(
+        int(r.strip()) for r in _extra_staff_ids.split(",") if r.strip().isdigit()
+    )
+
+# Fallback por nombre si los IDs de env no coinciden con el servidor
+STAFF_ROLE_NAMES = {name.lower() for name in STAFF_ROLE_MAP.values()} | {"mod"}
 
 PROMPT_PATH = BASE_DIR / "prompts" / "staff_evaluator.md"
 MAX_LOGS_FOR_AI = int(os.getenv("MAX_LOGS_FOR_AI", "150"))
@@ -52,7 +60,24 @@ def get_staff_role_name(member) -> str:
         return "Tester"
     if ROLE_HELPER_ID in role_ids:
         return "Helper"
+
+    for role in member.roles:
+        name = role.name.lower()
+        if name in ("moderador", "mod"):
+            return "Moderador"
+        if name == "tester":
+            return "Tester"
+        if name == "helper":
+            return "Helper"
+
     return "Staff"
+
+
+def member_has_staff_role(member) -> bool:
+    role_ids = {r.id for r in member.roles}
+    if role_ids & STAFF_ROLE_IDS:
+        return True
+    return any(r.name.lower() in STAFF_ROLE_NAMES for r in member.roles)
 
 
 def validate_config() -> list[str]:

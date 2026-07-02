@@ -15,9 +15,21 @@ def _is_admin(interaction: discord.Interaction) -> bool:
     return bool(user_role_ids & config.ADMIN_ROLE_IDS) or interaction.user.guild_permissions.administrator
 
 
+async def _resolve_member(
+    guild: discord.Guild, member: discord.Member | discord.User
+) -> discord.Member:
+    if isinstance(member, discord.Member) and len(member.roles) > 1:
+        return member
+
+    cached = guild.get_member(member.id)
+    if cached is not None:
+        return cached
+
+    return await guild.fetch_member(member.id)
+
+
 def _has_staff_role(member: discord.Member) -> bool:
-    role_ids = {r.id for r in member.roles}
-    return bool(role_ids & config.STAFF_ROLE_IDS)
+    return config.member_has_staff_role(member)
 
 
 class StaffCommands(commands.Cog):
@@ -44,9 +56,13 @@ class StaffCommands(commands.Cog):
             )
             return
 
+        miembro = await _resolve_member(interaction.guild, miembro)
+
         if not _has_staff_role(miembro):
+            role_names = ", ".join(r.name for r in miembro.roles if r.name != "@everyone")
             await interaction.response.send_message(
-                "El usuario seleccionado no tiene un rol de staff (Helper, Moderador o Tester).",
+                "El usuario seleccionado no tiene un rol de staff (Helper, Moderador o Tester).\n"
+                f"Roles detectados: {role_names or 'ninguno'}",
                 ephemeral=True,
             )
             return
@@ -119,8 +135,7 @@ class StaffCommands(commands.Cog):
         miembro: discord.Member | None = None,
     ):
         target = miembro or interaction.user
-        if isinstance(target, discord.User):
-            target = interaction.guild.get_member(target.id)
+        target = await _resolve_member(interaction.guild, target)
 
         if miembro and not _is_admin(interaction):
             if interaction.user.id != miembro.id:
@@ -175,6 +190,7 @@ class StaffCommands(commands.Cog):
             await interaction.response.send_message("Sin permiso.", ephemeral=True)
             return
 
+        miembro = await _resolve_member(interaction.guild, miembro)
         await interaction.response.defer()
 
         history = mongo_write.get_evaluation_history(str(miembro.id), limit=limite)
@@ -217,6 +233,7 @@ class StaffCommands(commands.Cog):
             await interaction.response.send_message("Sin permiso.", ephemeral=True)
             return
 
+        miembro = await _resolve_member(interaction.guild, miembro)
         await interaction.response.defer(thinking=True)
 
         try:
