@@ -16,6 +16,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 MONGODB_READONLY_URI = os.getenv("MONGODB_READONLY_URI", "")
 MONGODB_READONLY_DB = os.getenv("MONGODB_READONLY_DB", "sirgiobot")
 MONGODB_LOGS_COLLECTION = os.getenv("MONGODB_LOGS_COLLECTION", "logs")
+LOG_STAFF_ID_FIELDS = os.getenv("LOG_STAFF_ID_FIELDS", "")
 
 MONGODB_WRITE_URI = os.getenv("MONGODB_WRITE_URI", "")
 MONGODB_WRITE_DB = os.getenv("MONGODB_WRITE_DB", "insight_ia")

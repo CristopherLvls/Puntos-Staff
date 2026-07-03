@@ -75,6 +75,16 @@ class StaffCommands(commands.Cog):
             role = config.get_staff_role_name(miembro)
 
             logs = log_repository.find_staff_logs(staff_id, since=since)
+
+            if not logs:
+                diag = log_repository.diagnose_empty_logs(staff_id, since)
+                await interaction.followup.send(
+                    f"No se encontraron logs de actividad para **{miembro.display_name}** "
+                    f"en los últimos **{dias}** días.\n\n**Diagnóstico:**\n{diag}",
+                    ephemeral=True,
+                )
+                return
+
             summary = log_repository.summarize_logs_for_ai(logs)
 
             result = gemini_evaluator.evaluate_staff(
@@ -119,6 +129,44 @@ class StaffCommands(commands.Cog):
 
             await interaction.followup.send(embed=embed)
 
+        except Exception as e:
+            await interaction.followup.send(
+                gemini_evaluator.format_api_error(e), ephemeral=True
+            )
+
+    @app_commands.command(
+        name="diagnostico_logs",
+        description="Diagnóstico de conexión y logs de SirgioBOT (solo admins)",
+    )
+    @app_commands.describe(
+        miembro="Staff a buscar en los logs (opcional)",
+        dias="Días hacia atrás (default 30)",
+    )
+    async def diagnostico_logs(
+        self,
+        interaction: discord.Interaction,
+        miembro: discord.Member | None = None,
+        dias: app_commands.Range[int, 1, 90] = 30,
+    ):
+        if not _is_admin(interaction):
+            await interaction.response.send_message("Sin permiso.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            since = datetime.now(timezone.utc) - timedelta(days=dias)
+            staff_id = str(miembro.id) if miembro else None
+            logs = (
+                log_repository.find_staff_logs(staff_id, since=since, limit=5)
+                if staff_id
+                else []
+            )
+            diag = log_repository.diagnose_empty_logs(staff_id, since)
+            msg = f"**Diagnóstico de logs SirgioBOT**\n{diag}"
+            if miembro:
+                msg += f"\n\nLogs encontrados para **{miembro.display_name}**: **{len(logs)}**"
+            await interaction.followup.send(msg)
         except Exception as e:
             await interaction.followup.send(
                 gemini_evaluator.format_api_error(e), ephemeral=True
