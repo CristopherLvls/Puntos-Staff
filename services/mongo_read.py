@@ -39,6 +39,11 @@ class ReadOnlyCollection:
         return self._col.distinct(*args, **kwargs)
 
 
-def get_logs_collection() -> ReadOnlyCollection:
+def get_logs_collection(name: str | None = None) -> ReadOnlyCollection:
     db = get_read_db()
-    return ReadOnlyCollection(db[config.MONGODB_LOGS_COLLECTION])
+    col_name = name or config.MONGODB_LOGS_COLLECTION
+    return ReadOnlyCollection(db[col_name])
+
+
+def get_log_collections() -> list[ReadOnlyCollection]:
+    return [get_logs_collection(name) for name in config.get_log_collection_names()]

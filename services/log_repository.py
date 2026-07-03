@@ -4,10 +4,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 import config
-from services.mongo_read import get_logs_collection, get_read_db
+from services.mongo_read import get_log_collections, get_read_db
 
 # Campos planos donde puede aparecer el ID del staff que actuó
 STAFF_ID_FIELDS = (
+    "actorId",
+    "actor_id",
     "staffId",
     "staff_id",
     "moderatorId",
@@ -18,8 +20,6 @@ STAFF_ID_FIELDS = (
     "mod_id",
     "authorId",
     "author_id",
-    "actorId",
-    "actor_id",
     "performerId",
     "performer_id",
     "adminId",
@@ -28,6 +28,8 @@ STAFF_ID_FIELDS = (
     "handler_id",
     "memberId",
     "member_id",
+    "attendedBy",
+    "closedBy",
     "discordId",
     "discord_id",
     "userId",
@@ -63,7 +65,7 @@ NESTED_ID_KEYS = (
     "staff_id",
 )
 
-TIMESTAMP_FIELDS = ("timestamp", "createdAt", "created_at", "date", "time", "loggedAt")
+TIMESTAMP_FIELDS = ("at", "timestamp", "createdAt", "created_at", "date", "time", "loggedAt", "closedAt", "ratedAt")
 
 
 def _extra_staff_fields() -> tuple[str, ...]:
@@ -132,20 +134,28 @@ def _filter_by_since(docs: list[dict], since: datetime) -> list[dict]:
 
 def _scan_recent_for_staff(staff_discord_id: str, since: datetime, limit: int) -> list[dict]:
     """Fallback: busca el ID en cualquier campo de documentos recientes."""
-    col = get_logs_collection()
     sid = str(staff_discord_id)
     scan_limit = min(limit * 15, 3000)
-    cursor = col.find({}).sort("_id", -1).limit(scan_limit)
-
     matches: list[dict] = []
-    for doc in cursor:
-        if not _doc_contains_id(doc, sid):
-            continue
-        matches.append(doc)
+
+    for col in get_log_collections():
+        cursor = col.find({}).sort("_id", -1).limit(scan_limit)
+        for doc in cursor:
+            if not _doc_contains_id(doc, sid):
+                continue
+            matches.append(doc)
+            if len(matches) >= limit * 3:
+                break
         if len(matches) >= limit * 3:
             break
 
     return _filter_by_since(matches, since)[:limit]
+
+
+def _query_collection(col, staff_discord_id: str, limit: int) -> list[dict]:
+    query = _staff_id_query(staff_discord_id)
+    cursor = col.find(query).sort("_id", -1).limit(limit * 3)
+    return list(cursor)
 
 
 def find_staff_logs(
@@ -155,14 +165,16 @@ def find_staff_logs(
 ) -> list[dict]:
     """
     Busca logs donde el staff aparece como actor.
-    Filtra por fecha en Python si el campo de tiempo varía entre documentos.
+    Consulta todas las colecciones configuradas en SirgioBOT.
     """
     limit = limit or config.MAX_LOGS_FOR_AI
-    col = get_logs_collection()
-    query = _staff_id_query(staff_discord_id)
+    results: list[dict] = []
 
-    cursor = col.find(query).sort("_id", -1).limit(limit * 3)
-    results = _filter_by_since(list(cursor), since)[:limit]
+    for col in get_log_collections():
+        results.extend(_query_collection(col, staff_discord_id, limit))
+
+    results.sort(key=lambda d: _parse_timestamp(d) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    results = _filter_by_since(results, since)[:limit]
 
     if not results:
         results = _scan_recent_for_staff(staff_discord_id, since, limit)
@@ -173,8 +185,10 @@ def find_staff_logs(
 def diagnose_empty_logs(staff_discord_id: str | None, since: datetime) -> str:
     """Información útil cuando no hay logs para un staff."""
     db = get_read_db()
-    col_name = config.MONGODB_LOGS_COLLECTION
-    lines = [f"BD: `{config.MONGODB_READONLY_DB}` | Colección: `{col_name}`"]
+    col_names = config.get_log_collection_names()
+    lines = [
+        f"BD: `{config.MONGODB_READONLY_DB}` | Colecciones: `{', '.join(col_names)}`",
+    ]
     if staff_discord_id:
         lines.append(f"Discord ID buscado: `{staff_discord_id}`")
 
@@ -185,22 +199,22 @@ def diagnose_empty_logs(staff_discord_id: str | None, since: datetime) -> str:
         lines.append(f"No se pudo listar colecciones: {exc}")
         return "\n".join(lines)
 
-    if col_name not in collections:
-        lines.append(
-            f"La colección `{col_name}` **no existe**. "
-            "Revisa `MONGODB_LOGS_COLLECTION` en Render."
-        )
-        if collections:
-            lines.append(f"Prueba con una de estas: {', '.join(collections)}")
-        return "\n".join(lines)
+    missing = [name for name in col_names if name not in collections]
+    if missing:
+        lines.append(f"Colecciones configuradas que no existen: {', '.join(missing)}")
 
-    col = get_logs_collection()
-    try:
-        total = col.count_documents({})
-        lines.append(f"Documentos en `{col_name}`: {total}")
-    except Exception as exc:
-        lines.append(f"No se pudo contar documentos: {exc}")
-        total = 0
+    total = 0
+    for col_name in col_names:
+        if col_name not in collections:
+            lines.append(f"`{col_name}`: no existe")
+            continue
+        col = db[col_name]
+        try:
+            count = col.estimated_document_count()
+            total += count
+            lines.append(f"`{col_name}`: ~{count} documentos")
+        except Exception as exc:
+            lines.append(f"`{col_name}`: error al contar ({exc})")
 
     if total == 0:
         lines.append(
@@ -209,16 +223,21 @@ def diagnose_empty_logs(staff_discord_id: str | None, since: datetime) -> str:
         )
         return "\n".join(lines)
 
-    sample = col.find_one(sort=[("_id", -1)])
-    if sample:
-        keys = [k for k in sample.keys() if k != "_id"]
-        lines.append(f"Campos del último log: `{', '.join(keys[:12])}`")
+    sample_col = col_names[0] if col_names else config.MONGODB_LOGS_COLLECTION
+    if sample_col in collections:
+        sample = db[sample_col].find_one(sort=[("_id", -1)])
+        if sample:
+            keys = [k for k in sample.keys() if k != "_id"]
+            lines.append(f"Campos de `{sample_col}` (último doc): `{', '.join(keys[:12])}`")
 
     if not staff_discord_id:
         return "\n".join(lines)
 
     sid = str(staff_discord_id)
-    structured = col.count_documents(_staff_id_query(sid))
+    structured = 0
+    for col_name in col_names:
+        if col_name in collections:
+            structured += db[col_name].count_documents(_staff_id_query(sid))
     lines.append(f"Logs con consulta estructurada para este ID: {structured}")
 
     scan_matches = _scan_recent_for_staff(sid, since, limit=5)
@@ -246,6 +265,7 @@ def summarize_logs_for_ai(logs: list[dict]) -> str:
             or doc.get("type")
             or doc.get("event")
             or doc.get("logType")
+            or doc.get("category")
             or "evento"
         )
         content = (
@@ -253,7 +273,9 @@ def summarize_logs_for_ai(logs: list[dict]) -> str:
             or doc.get("message")
             or doc.get("description")
             or doc.get("reason")
+            or doc.get("reasonDetail")
             or doc.get("details")
+            or doc.get("transcript")
             or ""
         )
         extra = {k: v for k, v in doc.items() if k not in ("_id", "content", "message")}

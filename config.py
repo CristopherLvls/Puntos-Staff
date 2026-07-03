@@ -15,8 +15,11 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 MONGODB_READONLY_URI = os.getenv("MONGODB_READONLY_URI", "")
 MONGODB_READONLY_DB = os.getenv("MONGODB_READONLY_DB", "sirgiobot")
-MONGODB_LOGS_COLLECTION = os.getenv("MONGODB_LOGS_COLLECTION", "logs")
-LOG_STAFF_ID_FIELDS = os.getenv("LOG_STAFF_ID_FIELDS", "")
+MONGODB_LOGS_COLLECTION = os.getenv("MONGODB_LOGS_COLLECTION", "auditlogs")
+MONGODB_LOGS_COLLECTIONS = os.getenv(
+    "MONGODB_LOGS_COLLECTIONS",
+    "auditlogs,modcases,ticketreviews,suggestions",
+)
 
 MONGODB_WRITE_URI = os.getenv("MONGODB_WRITE_URI", "")
 MONGODB_WRITE_DB = os.getenv("MONGODB_WRITE_DB", "insight_ia")
@@ -47,7 +50,13 @@ if _extra_staff_ids:
 # Fallback por nombre si los IDs de env no coinciden con el servidor
 STAFF_ROLE_NAMES = {name.lower() for name in STAFF_ROLE_MAP.values()} | {"mod"}
 
-PROMPT_PATH = BASE_DIR / "prompts" / "staff_evaluator.md"
+LOG_STAFF_ID_FIELDS = os.getenv("LOG_STAFF_ID_FIELDS", "")
+
+
+def get_log_collection_names() -> list[str]:
+    if MONGODB_LOGS_COLLECTIONS.strip():
+        return [c.strip() for c in MONGODB_LOGS_COLLECTIONS.split(",") if c.strip()]
+    return [MONGODB_LOGS_COLLECTION]
 MAX_LOGS_FOR_AI = int(os.getenv("MAX_LOGS_FOR_AI", "80"))
 MAX_LOG_TEXT_CHARS = int(os.getenv("MAX_LOG_TEXT_CHARS", "16000"))
 

@@ -21,8 +21,8 @@ services:
         sync: false
       - key: MONGODB_WRITE_DB
         value: insight_ia
-      - key: MONGODB_LOGS_COLLECTION
-        value: logs
+      - key: MONGODB_LOGS_COLLECTIONS
+        value: auditlogs,modcases,ticketreviews,suggestions
       - key: ADMIN_ROLE_IDS
         sync: false
       - key: ROLE_HELPER_ID
