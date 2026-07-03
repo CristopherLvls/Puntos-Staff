@@ -57,6 +57,9 @@ def get_log_collection_names() -> list[str]:
     if MONGODB_LOGS_COLLECTIONS.strip():
         return [c.strip() for c in MONGODB_LOGS_COLLECTIONS.split(",") if c.strip()]
     return [MONGODB_LOGS_COLLECTION]
+
+
+PROMPT_PATH = BASE_DIR / "prompts" / "staff_evaluator.md"
 MAX_LOGS_FOR_AI = int(os.getenv("MAX_LOGS_FOR_AI", "80"))
 MAX_LOG_TEXT_CHARS = int(os.getenv("MAX_LOG_TEXT_CHARS", "16000"))
 
