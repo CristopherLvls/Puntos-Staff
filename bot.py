@@ -27,6 +27,9 @@ class InsightBot(commands.Bot):
     async def setup_hook(self):
         await staff_commands.setup(self)
         await staff_chat.setup(self)
+        if not config.DISCORD_SYNC_COMMANDS:
+            logger.info("Sincronización de slash commands omitida (DISCORD_SYNC_COMMANDS=false)")
+            return
         guild = discord.Object(id=int(config.DISCORD_GUILD_ID)) if config.DISCORD_GUILD_ID else None
         if guild:
             self.tree.copy_global_to(guild=guild)
@@ -56,6 +59,30 @@ async def _start_health_server() -> None:
     logger.info("Health check en http://0.0.0.0:%s/health", port)
 
 
+async def _start_bot_with_retry() -> None:
+    delay = 5.0
+    max_attempts = config.DISCORD_LOGIN_MAX_RETRIES
+
+    for attempt in range(1, max_attempts + 1):
+        bot = InsightBot()
+        try:
+            async with bot:
+                await bot.start(config.DISCORD_TOKEN)
+            return
+        except discord.HTTPException as exc:
+            if exc.status == 429 and attempt < max_attempts:
+                logger.warning(
+                    "Discord rate limit (429) al conectar. Reintento %s/%s en %.0fs...",
+                    attempt,
+                    max_attempts,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, 120)
+                continue
+            raise
+
+
 async def _run() -> None:
     missing = config.validate_config()
     if missing:
@@ -63,9 +90,7 @@ async def _run() -> None:
         sys.exit(1)
 
     await _start_health_server()
-    bot = InsightBot()
-    async with bot:
-        await bot.start(config.DISCORD_TOKEN)
+    await _start_bot_with_retry()
 
 
 def main():
