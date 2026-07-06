@@ -28,7 +28,8 @@ def reply_to_staff(
     messages: list[str],
     channel_label: str,
 ) -> str:
-    genai.configure(api_key=config.GEMINI_API_KEY)
+    api_key = config.GEMINI_API_KEY_2 or config.GEMINI_API_KEY
+    genai.configure(api_key=api_key)
     model = genai.GenerativeModel(
         model_name=config.GEMINI_MODEL,
         system_instruction=_build_system_instruction(),

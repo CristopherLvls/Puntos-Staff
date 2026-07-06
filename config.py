@@ -11,6 +11,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 MONGODB_READONLY_URI = os.getenv("MONGODB_READONLY_URI", "")
@@ -70,14 +71,10 @@ MAX_LOGS_FOR_AI = int(os.getenv("MAX_LOGS_FOR_AI", "80"))
 MAX_LOG_TEXT_CHARS = int(os.getenv("MAX_LOG_TEXT_CHARS", "16000"))
 
 STAFF_CHAT_ENABLED = os.getenv("STAFF_CHAT_ENABLED", "true").lower() in ("1", "true", "yes")
-STAFF_CHAT_DEBOUNCE_SECONDS = float(os.getenv("STAFF_CHAT_DEBOUNCE_SECONDS", "6"))
-STAFF_CHAT_MAX_PER_MINUTE = int(os.getenv("STAFF_CHAT_MAX_PER_MINUTE", "8"))
+STAFF_CHAT_DEBOUNCE_SECONDS = float(os.getenv("STAFF_CHAT_DEBOUNCE_SECONDS", "4"))
+STAFF_CHAT_MAX_PER_MINUTE = int(os.getenv("STAFF_CHAT_MAX_PER_MINUTE", "12"))
 STAFF_CHAT_SYNC_KNOWLEDGE = os.getenv("STAFF_CHAT_SYNC_KNOWLEDGE", "true").lower() in ("1", "true", "yes")
-
-_chat_channels = os.getenv("STAFF_CHAT_CHANNEL_IDS", "")
-STAFF_CHAT_CHANNEL_IDS = {
-    int(c.strip()) for c in _chat_channels.split(",") if c.strip().isdigit()
-}
+STAFF_CHAT_CATEGORY_ID = int(os.getenv("STAFF_CHAT_CATEGORY_ID", "1222957745859465358"))
 
 
 def get_staff_role_name(member) -> str:
@@ -119,4 +116,6 @@ def validate_config() -> list[str]:
         errors.append("MONGODB_READONLY_URI")
     if not MONGODB_WRITE_URI:
         errors.append("MONGODB_WRITE_URI")
+    if STAFF_CHAT_ENABLED and not GEMINI_API_KEY_2:
+        errors.append("GEMINI_API_KEY_2")
     return errors

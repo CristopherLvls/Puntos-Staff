@@ -23,9 +23,15 @@ class StaffChatCog(commands.Cog):
         )
         self._rate_limit_warned: set[int] = set()
 
+    def _channel_category_id(self, channel: discord.abc.GuildChannel) -> int | None:
+        if isinstance(channel, discord.Thread):
+            parent = channel.parent
+            return parent.category_id if parent else None
+        return getattr(channel, "category_id", None)
+
     def _channel_allowed(self, message: discord.Message) -> bool:
         if isinstance(message.channel, discord.DMChannel):
-            return True
+            return False
 
         if not message.guild:
             return False
@@ -33,10 +39,8 @@ class StaffChatCog(commands.Cog):
         if config.DISCORD_GUILD_ID and str(message.guild.id) != str(config.DISCORD_GUILD_ID):
             return False
 
-        if not config.STAFF_CHAT_CHANNEL_IDS:
-            return True
-
-        return message.channel.id in config.STAFF_CHAT_CHANNEL_IDS
+        category_id = self._channel_category_id(message.channel)
+        return category_id == config.STAFF_CHAT_CATEGORY_ID
 
     def _extract_content(self, message: discord.Message) -> str:
         content = (message.content or "").strip()
@@ -121,7 +125,8 @@ async def setup(bot: commands.Bot):
         await asyncio.to_thread(get_sirgiobot_knowledge)
     await bot.add_cog(StaffChatCog(bot))
     logger.info(
-        "Chat staff %s (debounce %.1fs)",
+        "Chat staff %s (debounce %.1fs, categoría %s, API key 2)",
         "activado" if config.STAFF_CHAT_ENABLED else "desactivado",
         config.STAFF_CHAT_DEBOUNCE_SECONDS,
+        config.STAFF_CHAT_CATEGORY_ID,
     )

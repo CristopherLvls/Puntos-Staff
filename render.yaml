@@ -11,6 +11,8 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
       - key: MONGODB_READONLY_URI
@@ -33,9 +35,11 @@ services:
         value: "1522373488990752869"
       - key: STAFF_CHAT_ENABLED
         value: "true"
+      - key: STAFF_CHAT_CATEGORY_ID
+        value: "1222957745859465358"
       - key: STAFF_CHAT_DEBOUNCE_SECONDS
-        value: "6"
+        value: "4"
       - key: STAFF_CHAT_MAX_PER_MINUTE
-        value: "8"
+        value: "12"
       - key: STAFF_CHAT_SYNC_KNOWLEDGE
         value: "true"
