@@ -16,6 +16,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("insight_ia")
 
+_discord_connected = False
+
 
 class InsightBot(commands.Bot):
     def __init__(self):
@@ -40,10 +42,15 @@ class InsightBot(commands.Bot):
             logger.info("Comandos sincronizados globalmente")
 
     async def on_ready(self):
+        global _discord_connected
+        _discord_connected = True
         logger.info("Conectado como %s (%s)", self.user, self.user.id)
 
 
-async def _health(_request: web.Request) -> web.Response:
+async def _health(request: web.Request) -> web.Response:
+    if request.query.get("status") == "1":
+        state = "connected" if _discord_connected else "connecting"
+        return web.Response(text=f"ok discord={state}")
     return web.Response(text="ok")
 
 
@@ -59,28 +66,57 @@ async def _start_health_server() -> None:
     logger.info("Health check en http://0.0.0.0:%s/health", port)
 
 
-async def _start_bot_with_retry() -> None:
-    delay = 5.0
-    max_attempts = config.DISCORD_LOGIN_MAX_RETRIES
+async def _wait_for_rate_limit(exc: discord.HTTPException, attempt: int, delay: float) -> float:
+    wait = float(exc.retry_after) if exc.retry_after else delay
+    wait = max(wait, 30.0)
+    logger.warning(
+        "Discord rate limit global (429). Esperando %.0fs (intento %s). "
+        "No redeployes: el bloqueo se levanta solo.",
+        wait,
+        attempt,
+    )
+    await asyncio.sleep(wait)
+    return min(max(wait, delay) * 1.5, 600.0)
 
-    for attempt in range(1, max_attempts + 1):
+
+async def _discord_connect_forever() -> None:
+    global _discord_connected
+    attempt = 0
+    delay = 30.0
+
+    if config.DISCORD_LOGIN_INITIAL_DELAY > 0:
+        logger.info(
+            "Esperando %ss antes del primer intento (evita solapar con instancia anterior)...",
+            config.DISCORD_LOGIN_INITIAL_DELAY,
+        )
+        await asyncio.sleep(config.DISCORD_LOGIN_INITIAL_DELAY)
+
+    while True:
+        attempt += 1
+        _discord_connected = False
         bot = InsightBot()
         try:
+            logger.info("Conectando a Discord (intento %s)...", attempt)
             async with bot:
                 await bot.start(config.DISCORD_TOKEN)
-            return
+        except discord.LoginFailure as exc:
+            logger.error("Token de Discord inválido o revocado: %s", exc)
+            await asyncio.sleep(300)
         except discord.HTTPException as exc:
-            if exc.status == 429 and attempt < max_attempts:
-                logger.warning(
-                    "Discord rate limit (429) al conectar. Reintento %s/%s en %.0fs...",
-                    attempt,
-                    max_attempts,
-                    delay,
-                )
-                await asyncio.sleep(delay)
-                delay = min(delay * 2, 120)
+            if exc.status == 429:
+                delay = await _wait_for_rate_limit(exc, attempt, delay)
                 continue
+            logger.exception("Error HTTP de Discord (status %s)", exc.status)
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
             raise
+        except Exception:
+            logger.exception("Error inesperado conectando a Discord")
+            await asyncio.sleep(delay)
+        else:
+            _discord_connected = False
+            logger.info("Desconectado de Discord. Reconectando en %ss...", delay)
+            await asyncio.sleep(delay)
 
 
 async def _run() -> None:
@@ -90,7 +126,7 @@ async def _run() -> None:
         sys.exit(1)
 
     await _start_health_server()
-    await _start_bot_with_retry()
+    await _discord_connect_forever()
 
 
 def main():

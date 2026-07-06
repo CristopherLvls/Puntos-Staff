@@ -11,6 +11,8 @@ services:
         sync: false
       - key: DISCORD_SYNC_COMMANDS
         value: "false"
+      - key: DISCORD_LOGIN_INITIAL_DELAY
+        value: "90"
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_API_KEY_2

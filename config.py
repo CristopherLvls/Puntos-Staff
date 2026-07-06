@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
 DISCORD_SYNC_COMMANDS = os.getenv("DISCORD_SYNC_COMMANDS", "false").lower() in ("1", "true", "yes")
-DISCORD_LOGIN_MAX_RETRIES = int(os.getenv("DISCORD_LOGIN_MAX_RETRIES", "8"))
+DISCORD_LOGIN_INITIAL_DELAY = float(os.getenv("DISCORD_LOGIN_INITIAL_DELAY", "90"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2", "")
