@@ -60,8 +60,24 @@ def get_log_collection_names() -> list[str]:
 
 
 PROMPT_PATH = BASE_DIR / "prompts" / "staff_evaluator.md"
+STAFF_CHAT_PROMPT_PATH = BASE_DIR / "prompts" / "staff_chat.md"
+SIRGIOBOT_KNOWLEDGE_PATH = BASE_DIR / "prompts" / "sirgiobot_commands.md"
+SIRGIOBOT_README_URL = os.getenv(
+    "SIRGIOBOT_README_URL",
+    "https://raw.githubusercontent.com/CristopherAFK/SirgioBOT01/main/README.md",
+)
 MAX_LOGS_FOR_AI = int(os.getenv("MAX_LOGS_FOR_AI", "80"))
 MAX_LOG_TEXT_CHARS = int(os.getenv("MAX_LOG_TEXT_CHARS", "16000"))
+
+STAFF_CHAT_ENABLED = os.getenv("STAFF_CHAT_ENABLED", "true").lower() in ("1", "true", "yes")
+STAFF_CHAT_DEBOUNCE_SECONDS = float(os.getenv("STAFF_CHAT_DEBOUNCE_SECONDS", "6"))
+STAFF_CHAT_MAX_PER_MINUTE = int(os.getenv("STAFF_CHAT_MAX_PER_MINUTE", "8"))
+STAFF_CHAT_SYNC_KNOWLEDGE = os.getenv("STAFF_CHAT_SYNC_KNOWLEDGE", "true").lower() in ("1", "true", "yes")
+
+_chat_channels = os.getenv("STAFF_CHAT_CHANNEL_IDS", "")
+STAFF_CHAT_CHANNEL_IDS = {
+    int(c.strip()) for c in _chat_channels.split(",") if c.strip().isdigit()
+}
 
 
 def get_staff_role_name(member) -> str:

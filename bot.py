@@ -8,7 +8,7 @@ from aiohttp import web
 from discord.ext import commands
 
 import config
-from commands import staff_commands
+from commands import staff_chat, staff_commands
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,10 +21,12 @@ class InsightBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
         intents.members = True
+        intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
         await staff_commands.setup(self)
+        await staff_chat.setup(self)
         guild = discord.Object(id=int(config.DISCORD_GUILD_ID)) if config.DISCORD_GUILD_ID else None
         if guild:
             self.tree.copy_global_to(guild=guild)

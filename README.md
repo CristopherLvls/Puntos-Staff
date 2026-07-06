@@ -18,6 +18,19 @@ Bot de Discord en Python que lee logs de **SirgioBOT** (solo lectura), evalúa e
 | `/puntos` | Staff / Admin | Promedio y reputación acumulada |
 | `/historial` | Staff / Admin | Últimas evaluaciones |
 | `/consejos` | Staff / Admin | Consejos para mejorar puntaje |
+| `/diagnostico_logs` | Admin | Diagnóstico de logs SirgioBOT |
+
+## Chat con staff (IA)
+
+El bot responde mensajes de miembros del staff **en canales del servidor y por DM privado**.
+
+- **Anti-spam:** agrupa mensajes seguidos y responde tras ~6 s de pausa (debounce).
+- **Límite API:** máx. 8 respuestas IA por usuario por minuto.
+- **Conocimiento SirgioBOT:** usa `prompts/sirgiobot_commands.md` y sincroniza el README desde [SirgioBOT01](https://github.com/CristopherAFK/SirgioBOT01).
+
+Variables opcionales: `STAFF_CHAT_ENABLED`, `STAFF_CHAT_DEBOUNCE_SECONDS`, `STAFF_CHAT_CHANNEL_IDS` (vacío = todos los canales).
+
+**Requisito:** activar **Message Content Intent** en el Portal de Desarrolladores de Discord.
 
 ## Configuración local
 
